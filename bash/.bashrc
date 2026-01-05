@@ -61,7 +61,7 @@ alias cat='bat'
 
 # ----- 强化提示符 PS1 -----
 if [[ $EUID == 0 ]]; then
-  PS1='\[\e[1;31m\][ROOT \u@\h \W]\$\[\e[0m\] '
+  PS1='\[\e[1;32m\][\u@\h \W]\$\[\e[0m\] '
 else
   PS1='\[\e[1;32m\][\u@\h \W]\$\[\e[0m\] '
 fi
