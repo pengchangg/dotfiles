@@ -57,10 +57,22 @@ gcm() {
   _git_require_repo || return 1
   [ -z "$1" ] && echo 'usage: gcm "type: message"' && return 1
 
-  git add .
   git status
-  git commit -m "$1"
+  echo
+
+  read -r -p "Continue and stage ALL changes? [y/N]: " confirm
+  case "$confirm" in
+    y|Y)
+      git add . || return 1
+      git commit -m "$1"
+      ;;
+    *)
+      echo "aborted"
+      return 1
+      ;;
+  esac
 }
+
 
 # ---------- status / context ----------
 
