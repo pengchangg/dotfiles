@@ -25,7 +25,7 @@ _git_require_repo() {
 # ---------- base aliases ----------
 
 alias gad='git add .'
-alias gst='git status'
+alias gs='git status'
 alias gco='git checkout'
 alias gbr='git branch'
 alias glast='git log -1 --oneline'
@@ -160,7 +160,7 @@ Git Workflow Commands:
   gtag vX.Y.Z "msg"     create and push tag
 
 Base aliases:
- gad, gst, gco, gbr, glast, glg, gtl
+ gad, gs, gco, gbr, glast, glg, gtl
 EOF
 }
 
