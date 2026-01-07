@@ -24,6 +24,7 @@ _git_require_repo() {
 
 # ---------- base aliases ----------
 
+alias gad='git add .'
 alias gst='git status'
 alias gco='git checkout'
 alias gbr='git branch'
@@ -56,15 +57,19 @@ gcm() {
   _git_require_repo || return 1
   [ -z "$1" ] && echo 'usage: gcm "type: message"' && return 1
 
+  git add .
   git status
   git commit -m "$1"
 }
 
 # ---------- status / context ----------
 
+
 gwhere() {
   _git_require_repo || return 1
-  echo "branch: $(_git_branch)"
+  local branch
+  branch="$(_git_branch)"
+  echo "branch: $branch"
   git status --short
 }
 
@@ -135,7 +140,7 @@ Git Workflow Commands:
   gtag vX.Y.Z     create and push tag
 
 Base aliases:
-  gst, gco, gbr, glast, glg
+ gad, gst, gco, gbr, glast, glg
 EOF
 }
 
