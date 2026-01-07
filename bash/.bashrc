@@ -91,7 +91,7 @@ __git_ps1_status() {
     printf " (%s%s)" "$branch" "$status"
 }
 
-PS1=' \[\e[1;32m\][\u@\h \W]\[\e[33m\]$(__git_ps1_status)\[\e[1;32m\]\$\[\e[0m\] '
+PS1='\[\e[1;32m\][\u@\h \W]\[\e[33m\]$(__git_ps1_status)\[\e[1;32m\]\$\[\e[0m\] '
 
 
 # ----- 安全：防止 rm 覆盖 -----
