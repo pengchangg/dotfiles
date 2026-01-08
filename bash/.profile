@@ -7,8 +7,6 @@
 export __PROFILE_LOADED__=1
 
 # ---------- 基础环境 ----------
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
 export EDITOR=nvim
 export VISUAL=nvim
 export PAGER=less
