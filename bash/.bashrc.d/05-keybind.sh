@@ -2,6 +2,12 @@
 # Readline key bindings
 # ==================================================
 
-# 无论 emacs / vi 模式，都保证 Ctrl+L 清屏
+# ----- 强制 emacs 模式 -----
+set -o emacs
+
+# ----- Ctrl+L 永远清屏 -----
 bind '"\C-l": clear-screen'
+
+# ----- 其他常用增强 -----
+bind '"\e.": yank-last-arg'   # Alt+. 多次取最后参数
 
