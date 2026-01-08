@@ -22,7 +22,7 @@
 1. **克隆仓库到 `~/.dotfiles`**
 
 ```bash
-git clone https://github.com/pengchangg/dotfile.git ~/.dotfiles
+git clone https://github.com/pengchangg/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ```
 
