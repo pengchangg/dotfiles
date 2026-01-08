@@ -51,6 +51,169 @@ check_stow() {
     fi
 }
 
+# 检查 git-crypt 是否安装
+check_git_crypt() {
+    if ! command -v git-crypt &> /dev/null; then
+        log_error "git-crypt 未安装"
+        echo "请先安装 git-crypt:"
+        echo "  Arch: sudo pacman -S git-crypt"
+        echo "  Debian/Ubuntu: sudo apt install git-crypt"
+        echo "  macOS: brew install git-crypt"
+        exit 1
+    fi
+}
+
+# 检查 private 目录是否存在
+check_private_dir() {
+    if [ ! -d "${SCRIPT_DIR}/private" ]; then
+        log_warn "private/ 目录不存在"
+        return 1
+    fi
+    return 0
+}
+
+# 检查是否需要解锁
+need_unlock() {
+    local private_dir="${SCRIPT_DIR}/private"
+    
+    # 如果 private 目录不存在，不需要解锁
+    if [ ! -d "$private_dir" ]; then
+        return 1
+    fi
+    
+    # 检查是否有文件
+    local file_count=$(find "$private_dir" -type f 2>/dev/null | wc -l)
+    if [ "$file_count" -eq 0 ]; then
+        return 1  # 目录为空，不需要解锁
+    fi
+    
+    # 检查是否有加密文件（需要在 git 仓库根目录执行）
+    (
+        cd "$SCRIPT_DIR" || return 1
+        local encrypted_count=0
+        
+        # 查找 private 目录下的所有文件并检查加密状态
+        while IFS= read -r -d '' file; do
+            # 获取相对于仓库根目录的路径
+            local rel_path="${file#${SCRIPT_DIR}/}"
+            if git-crypt status -e "$rel_path" 2>/dev/null | grep -q "encrypted"; then
+                encrypted_count=$((encrypted_count + 1))
+            fi
+        done < <(find "$private_dir" -type f -print0 2>/dev/null || true)
+        
+        # 如果有加密文件，需要解锁
+        [ "$encrypted_count" -gt 0 ]
+    )
+}
+
+# 解锁 private 目录（解密）
+unlock_private() {
+    check_git_crypt
+    
+    if ! check_private_dir; then
+        return 0
+    fi
+    
+    cd "$SCRIPT_DIR"
+    
+    # 自动判断是否需要解锁
+    if need_unlock; then
+        log_info "检测到加密文件，正在解锁 private/ 目录..."
+        
+        # 尝试解锁
+        if git-crypt unlock 2>/dev/null; then
+            log_success "private/ 目录已解锁"
+        else
+            log_warn "无法解锁 private/ 目录（可能需要 GPG 密钥）"
+            log_info "如果这是首次克隆，请确保已导入 GPG 密钥"
+            log_info "可以使用: gpg --import <key-file> 导入密钥"
+            return 1
+        fi
+    else
+        log_info "private/ 目录无需解锁（已解锁或目录为空）"
+    fi
+}
+
+# 锁定 private 目录（加密）
+lock_private() {
+    log_info "锁定 private/ 目录..."
+    
+    check_git_crypt
+    
+    if ! check_private_dir; then
+        log_warn "跳过锁定操作"
+        return 0
+    fi
+    
+    cd "$SCRIPT_DIR"
+    
+    # 锁定加密文件
+    if git-crypt lock 2>/dev/null; then
+        log_success "private/ 目录已锁定"
+    else
+        log_warn "锁定操作可能失败或无需锁定"
+    fi
+}
+
+# 检查 git-crypt 状态
+check_crypt_status() {
+    log_info "检查 git-crypt 状态..."
+    echo ""
+    
+    check_git_crypt
+    
+    cd "$SCRIPT_DIR"
+    
+    if ! check_private_dir; then
+        log_warn "private/ 目录不存在"
+        return 0
+    fi
+    
+    # 检查加密状态
+    echo -e "${BLUE}git-crypt 状态:${NC}"
+    
+    # 检查 private 目录下的文件加密状态
+    local encrypted_count=0
+    local not_encrypted_count=0
+    local total_files=0
+    
+    if [ -d "private" ]; then
+        # 统计文件数量
+        while IFS= read -r -d '' file; do
+            total_files=$((total_files + 1))
+            if git-crypt status -e "$file" 2>/dev/null | grep -q "encrypted"; then
+                encrypted_count=$((encrypted_count + 1))
+            else
+                not_encrypted_count=$((not_encrypted_count + 1))
+            fi
+        done < <(find private -type f -print0 2>/dev/null || true)
+        
+        echo "  private/ 目录文件统计:"
+        if [ "$total_files" -eq 0 ]; then
+            echo "    目录为空（无文件）"
+        else
+            echo "    总文件数: $total_files"
+            echo "    已加密: $encrypted_count"
+            echo "    未加密: $not_encrypted_count"
+        fi
+    fi
+    
+    # 显示 git-crypt 整体状态
+    echo ""
+    echo -e "${BLUE}git-crypt 配置:${NC}"
+    if [ -f ".gitattributes" ]; then
+        if grep -q "private/\*\*" .gitattributes; then
+            echo "  ✓ private/** 已配置加密"
+        else
+            echo "  ✗ private/** 未配置加密"
+        fi
+    else
+        echo "  ✗ .gitattributes 文件不存在"
+    fi
+    
+    echo ""
+}
+
 # 检查文件是否为符号链接
 is_symlink() {
     [ -L "$1" ]
@@ -135,6 +298,9 @@ restore_config() {
     # 切换到 dotfiles 目录
     cd "$SCRIPT_DIR"
     
+    # 自动解锁 private 目录（如果需要）
+    unlock_private
+    
     # 安装所有配置包
     local failed_packages=()
     for package in "${PACKAGES[@]}"; do
@@ -158,6 +324,7 @@ restore_config() {
     
     if [ ${#failed_packages[@]} -eq 0 ]; then
         log_success "所有配置恢复成功！"
+        
         echo ""
         echo "提示："
         echo "  - 重新加载 shell: source ~/.bashrc"
@@ -276,6 +443,9 @@ check_status() {
             echo ""
         fi
     fi
+    
+    # 显示 git-crypt 状态
+    check_crypt_status
 }
 
 # 显示帮助信息
@@ -287,16 +457,22 @@ Dotfiles 管理脚本
     $0 [命令]
 
 命令:
-    restore      恢复/安装所有 dotfiles 配置
+    restore      恢复/安装所有 dotfiles 配置（会自动解锁 private/）
     reset        重置/卸载所有 dotfiles 配置
     backup       备份现有配置（不安装）
-    status       检查配置状态
+    status       检查配置状态（包括 git-crypt 状态）
+    unlock       解锁 private/ 目录（解密）
+    lock         锁定 private/ 目录（加密）
+    crypt-status 检查 git-crypt 加密状态
     help         显示此帮助信息
 
 示例:
-    $0 restore    # 安装所有配置
-    $0 reset      # 卸载所有配置
-    $0 status     # 查看配置状态
+    $0 restore        # 安装所有配置并解锁 private/
+    $0 reset          # 卸载所有配置
+    $0 status         # 查看配置状态
+    $0 unlock         # 解锁 private/ 目录
+    $0 lock           # 锁定 private/ 目录
+    $0 crypt-status   # 查看加密状态
 
 EOF
 }
@@ -317,6 +493,15 @@ main() {
             ;;
         status)
             check_status
+            ;;
+        unlock)
+            unlock_private
+            ;;
+        lock)
+            lock_private
+            ;;
+        crypt-status)
+            check_crypt_status
             ;;
         help|--help|-h)
             show_help
