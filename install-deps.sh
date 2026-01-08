@@ -46,7 +46,6 @@ OPTIONAL_PACKAGES=(
     "git-crypt"
     "gnupg"
     "go"
-    "rust"
 )
 
 # 检测操作系统
