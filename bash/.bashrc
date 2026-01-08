@@ -52,7 +52,7 @@ alias gd='git diff'
 alias ga='git add .'
 alias gc='git commit -m'
 
-#  vim --> nvim
+# vim -> nvim
 alias vi='nvim'
 alias vim='nvim'
 
@@ -137,6 +137,7 @@ fi
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 [ -f ~/.git-workflow.sh ] && source ~/.git-workflow.sh
+[ -f $HOME/.cargo/env ] && source  "$HOME/.cargo/env"
 
 # alias man="~/.local/bin/colored_man.sh"
 export MANPAGER="sh -c 'awk '\''{ gsub(/\x1B\[[0-9;]*m/, \"\", \$0); gsub(/.\x08/, \"\", \$0); print }'\'' | bat -p -lman'"
