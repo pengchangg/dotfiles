@@ -22,7 +22,7 @@ function path_prepend {
 path_prepend "$HOME/.local/bin"
 path_prepend "$HOME/bin"
 
-export PATH
+export PATH=$PATH:/sbin:/usr/sbin
 
 # ---------- Bash 才加载 bashrc ----------
 if [ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ]; then
