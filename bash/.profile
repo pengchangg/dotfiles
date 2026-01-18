@@ -22,7 +22,8 @@ function path_prepend {
 path_prepend "$HOME/.local/bin"
 path_prepend "$HOME/bin"
 
-export PATH=$PATH:/sbin:/usr/sbin:/usr/local/nvim/bin
+export PATH=$PATH:/sbin:/usr/sbin:/usr/local/nvim/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin
+
 
 # ---------- Bash 才加载 bashrc ----------
 if [ -n "$BASH_VERSION" ] && [ -f "$HOME/.bashrc" ]; then

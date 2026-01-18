@@ -27,3 +27,4 @@ export PYTHONWARNINGS=ignore
 export PIP_DISABLE_PIP_VERSION_CHECK=1
 export NPM_CONFIG_FUND=false
 
+export PATH=$PATH:/sbin:/usr/sbin:/usr/local/nvim/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/bin:/bin:/usr/sbin:/sbin
