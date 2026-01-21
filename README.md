@@ -203,7 +203,8 @@ stow -v <package-name>
 
 ## 📄 许可证
 
-MIT License
+
+[MIT License](./LICENSE)
 
 ## 🙏 致谢
 
