@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 PACKAGES=("bash" "nvim" "tmux" "git-workflow" "bat")
 
 # 全局 dry-run 标志
-DRY_RUN=false
+DRY_RUN="false"
 
 # 脚本所在目录（dotfiles 根目录）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -61,7 +61,7 @@ handle_error() {
     log_error "错误: $error_message"
     log_error "退出码: $exit_code"
 
-    if [ "$DRY_RUN" = false ]; then
+    if [ "$DRY_RUN" = "false" ]; then
         log_warn "操作已终止，请检查错误信息"
     fi
 
@@ -161,7 +161,7 @@ unlock_private() {
         log_info "检测到加密文件，正在解锁 private/ 目录..."
 
         # 尝试解锁
-        if git-crypt unlock 2>&1; then
+        if git-crypt unlock 2>/dev/null; then
             # 解锁后验证状态
             local unlocked_count=0
             local total_files=0
@@ -217,7 +217,7 @@ lock_private() {
     fi
 
     # 尝试锁定
-    if git-crypt lock 2>&1; then
+    if git-crypt lock 2>/dev/null; then
         # 锁定后验证状态
         local encrypted_count=0
 
@@ -321,7 +321,7 @@ backup_config() {
     local backup_path="${BACKUP_DIR}/${package}/${TIMESTAMP}"
     local filename=$(basename "$target_path")
 
-    if [ "$DRY_RUN" = true ]; then
+    if [ "$DRY_RUN" = "true" ]; then
         if [ -d "$target_path" ]; then
             log_dry_run "将备份目录: $target_path -> $backup_path/"
         else
@@ -359,16 +359,19 @@ cleanup_old_backups() {
         return
     fi
 
-    # 获取所有备份目录并排序
-    local backup_dirs=($(ls -1 "$package_backup_dir" 2>/dev/null | sort -r))
+    # 使用 find 安全获取所有备份目录并排序（处理特殊字符）
+    local backup_dirs=()
+    while IFS= read -r -d '' dir; do
+        backup_dirs+=("$(basename "$dir")")
+    done < <(find "$package_backup_dir" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null | sort -z -r)
 
     if [ ${#backup_dirs[@]} -gt $MAX_BACKUPS ]; then
-        local backups_to_remove=(${backup_dirs[@]:$MAX_BACKUPS})
+        local backups_to_remove=("${backup_dirs[@]:$MAX_BACKUPS}")
 
         for backup in "${backups_to_remove[@]}"; do
             local backup_path="${package_backup_dir}/${backup}"
 
-            if [ "$DRY_RUN" = true ]; then
+            if [ "$DRY_RUN" = "true" ]; then
                 log_dry_run "将删除旧备份: $backup_path"
             else
                 log_info "删除旧备份: $backup_path"
@@ -382,7 +385,7 @@ cleanup_old_backups() {
 backup_all() {
     log_info "开始备份现有配置..."
 
-    if [ "$DRY_RUN" = true ]; then
+    if [ "$DRY_RUN" = "true" ]; then
         log_dry_run "将创建备份目录: $BACKUP_DIR"
     else
         mkdir -p "$BACKUP_DIR"
@@ -401,8 +404,8 @@ backup_all() {
     [ -f "$HOME/.tmux.conf" ] && backup_config "tmux" "$HOME/.tmux.conf"
     
     # Git 配置
-    [ -f "$HOME/.gitconfig" ] && backup_config "git-workfow" "$HOME/.gitconfig"
-    [ -f "$HOME/.git-workflow.sh" ] && backup_config "git-workfow" "$HOME/.git-workflow.sh"
+    [ -f "$HOME/.gitconfig" ] && backup_config "git-workflow" "$HOME/.gitconfig"
+    [ -f "$HOME/.git-workflow.sh" ] && backup_config "git-workflow" "$HOME/.git-workflow.sh"
     
     # Bat 配置
     [ -f "$HOME/.config/bat/config" ] && backup_config "bat" "$HOME/.config/bat/config"
@@ -424,7 +427,7 @@ restore_config() {
     cd "$SCRIPT_DIR"
     
     # 自动解锁 private 目录（如果需要）
-    if [ "$DRY_RUN" = true ]; then
+    if [ "$DRY_RUN" = "true" ]; then
         log_dry_run "将尝试解锁 private/ 目录"
         unlock_private || true  # dry-run 模式下忽略失败
     else
@@ -450,7 +453,7 @@ restore_config() {
         
         log_info "安装配置包: $package"
         
-        if [ "$DRY_RUN" = true ]; then
+        if [ "$DRY_RUN" = "true" ]; then
             log_dry_run "将安装配置包: $package"
             stow -n "$package" 2>&1 | grep -E "(LINK:|WARNING:)" || true
         else
@@ -467,7 +470,7 @@ restore_config() {
         fi
     done
     
-    if [ "$DRY_RUN" = true ]; then
+    if [ "$DRY_RUN" = "true" ]; then
         log_info "dry-run 模式：以上操作仅显示，未实际执行"
         return 0
     fi
@@ -492,7 +495,7 @@ reset_config() {
     check_stow
     
     # 确认操作（dry-run 模式下跳过）
-    if [ "$DRY_RUN" != true ]; then
+    if [ "$DRY_RUN" != "true" ]; then
         echo ""
         log_warn "这将删除所有 dotfiles 的符号链接"
         read -p "确定要继续吗？[y/N]: " -n 1 -r
@@ -517,7 +520,7 @@ reset_config() {
         
         log_info "卸载配置包: $package"
         
-        if [ "$DRY_RUN" = true ]; then
+        if [ "$DRY_RUN" = "true" ]; then
             log_dry_run "将卸载配置包: $package"
             stow -D -n "$package" 2>&1 | grep -E "(UNLINK:|WARNING:)" || true
         else
@@ -530,7 +533,7 @@ reset_config() {
         fi
     done
     
-    if [ "$DRY_RUN" = true ]; then
+    if [ "$DRY_RUN" = "true" ]; then
         log_info "dry-run 模式：以上操作仅显示，未实际执行"
         return 0
     fi
@@ -574,7 +577,7 @@ check_status() {
                 tmux)
                     [ -L "$HOME/.tmux.conf" ] && echo "  ✓ .tmux.conf (符号链接)"
                     ;;
-                git-workfow)
+                git-workflow)
                     [ -L "$HOME/.gitconfig" ] && echo "  ✓ .gitconfig (符号链接)"
                     [ -L "$HOME/.git-workflow.sh" ] && echo "  ✓ .git-workflow.sh (符号链接)"
                     ;;
@@ -689,7 +692,7 @@ ARGS=()
 for arg in "$@"; do
     case "$arg" in
         --dry-run|-n)
-            DRY_RUN=true
+            DRY_RUN="true"
             ;;
         *)
             ARGS+=("$arg")

@@ -185,11 +185,7 @@ install_packages() {
             # 更新包列表
             log_info "更新包列表..."
             if [ "$DRY_RUN" = "false" ]; then
-                if [[ "$os_type" == "macos" ]]; then
-                    $PKG_UPDATE
-                else
-                    sudo $PKG_UPDATE || true
-                fi
+                sudo $PKG_UPDATE || true
             else
                 log_info "将更新包列表"
             fi

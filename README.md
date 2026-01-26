@@ -7,7 +7,7 @@
 - **bash** - Bash shell 配置（模块化设计）
 - **nvim** - Neovim 编辑器配置
 - **tmux** - 终端复用器配置
-- **git-workfow** - Git 配置和工作流脚本
+- **git-workflow** - Git 配置和工作流脚本
 - **bat** - 代码高亮工具配置
 
 ## 🚀 快速开始
@@ -84,7 +84,7 @@ dotfiles/
 │           └── init.lua
 ├── tmux/                    # Tmux 配置
 │   └── .tmux.conf
-├── git-workfow/             # Git 配置
+├── git-workflow/            # Git 配置
 │   ├── .gitconfig          # Git 全局配置
 │   └── .git-workflow.sh    # Git 工作流脚本
 └── bat/                     # Bat 配置
@@ -155,7 +155,7 @@ Git 工作流脚本，提供便捷命令：
 ```bash
 cd ~/.dotfiles
 git pull
-stow -R bash nvim tmux git-workfow bat  # -R 表示重新安装
+stow -R bash nvim tmux git-workflow bat  # -R 表示重新安装
 ```
 
 ### 修改配置
