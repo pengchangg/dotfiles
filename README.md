@@ -201,11 +201,6 @@ stow -n <package-name>
 stow -v <package-name>
 ```
 
-## 📄 许可证
-
-
-[MIT License](./LICENSE)
-
 ## 🙏 致谢
 
 感谢所有开源社区的工具和配置分享。
