@@ -12,10 +12,14 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # 配置包列表
-PACKAGES=("bash" "nvim" "tmux" "git-workfow" "bat")
+PACKAGES=("bash" "nvim" "tmux" "git-workflow" "bat")
+
+# 全局 dry-run 标志
+DRY_RUN=false
 
 # 脚本所在目录（dotfiles 根目录）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,6 +41,41 @@ log_warn() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_dry_run() {
+    echo -e "${YELLOW}[DRY-RUN]${NC} $1"
+}
+
+log_debug() {
+    if [ "${DEBUG:-false}" = true ]; then
+        echo -e "${CYAN}[DEBUG]${NC} $1"
+    fi
+}
+
+# 错误处理函数
+handle_error() {
+    local exit_code=$1
+    local error_message=$2
+
+    log_error "错误: $error_message"
+    log_error "退出码: $exit_code"
+
+    if [ "$DRY_RUN" = false ]; then
+        log_warn "操作已终止，请检查错误信息"
+    fi
+
+    exit $exit_code
+}
+
+# 检查命令是否成功执行
+check_command() {
+    local command_name=$1
+    local exit_code=$2
+
+    if [ $exit_code -ne 0 ]; then
+        handle_error $exit_code "命令执行失败: $command_name"
+    fi
 }
 
 # 检查 stow 是否安装
@@ -109,49 +148,90 @@ need_unlock() {
 # 解锁 private 目录（解密）
 unlock_private() {
     check_git_crypt
-    
+
     if ! check_private_dir; then
-        return 0
+        log_warn "private/ 目录不存在，无法执行解锁操作"
+        return 1
     fi
-    
+
     cd "$SCRIPT_DIR"
-    
+
     # 自动判断是否需要解锁
     if need_unlock; then
         log_info "检测到加密文件，正在解锁 private/ 目录..."
-        
+
         # 尝试解锁
-        if git-crypt unlock 2>/dev/null; then
-            log_success "private/ 目录已解锁"
+        if git-crypt unlock 2>&1; then
+            # 解锁后验证状态
+            local unlocked_count=0
+            local total_files=0
+
+            while IFS= read -r -d '' file; do
+                total_files=$((total_files + 1))
+                if ! git-crypt status -e "$file" 2>/dev/null | grep -q "encrypted"; then
+                    unlocked_count=$((unlocked_count + 1))
+                fi
+            done < <(find private -type f -print0 2>/dev/null || true)
+
+            log_success "private/ 目录解锁成功！"
+            log_info "已解锁 $unlocked_count 个文件（共 $total_files 个文件）"
         else
-            log_warn "无法解锁 private/ 目录（可能需要 GPG 密钥）"
-            log_info "如果这是首次克隆，请确保已导入 GPG 密钥"
-            log_info "可以使用: gpg --import <key-file> 导入密钥"
+            log_error "解锁 private/ 目录失败！"
+            log_info "可能的原因："
+            log_info "  - GPG 密钥未导入"
+            log_info "  - 密钥不匹配"
+            log_info "  - 文件权限问题"
+            log_info "解决方法："
+            log_info "  - 导入 GPG 密钥：gpg --import <key-file>"
+            log_info "  - 检查密钥环：gpg --list-secret-keys"
             return 1
         fi
     else
-        log_info "private/ 目录无需解锁（已解锁或目录为空）"
+        local file_count=$(find private -type f 2>/dev/null | wc -l)
+        if [ "$file_count" -eq 0 ]; then
+            log_info "private/ 目录为空，无需解锁"
+        else
+            log_info "private/ 目录已处于解锁状态"
+        fi
     fi
 }
 
 # 锁定 private 目录（加密）
 lock_private() {
     log_info "锁定 private/ 目录..."
-    
+
     check_git_crypt
-    
+
     if ! check_private_dir; then
-        log_warn "跳过锁定操作"
+        log_warn "private/ 目录不存在，无法执行锁定操作"
+        return 1
+    fi
+
+    cd "$SCRIPT_DIR"
+
+    # 检查是否有文件需要锁定
+    local file_count=$(find private -type f 2>/dev/null | wc -l)
+    if [ "$file_count" -eq 0 ]; then
+        log_info "private/ 目录为空，无需锁定"
         return 0
     fi
-    
-    cd "$SCRIPT_DIR"
-    
-    # 锁定加密文件
-    if git-crypt lock 2>/dev/null; then
-        log_success "private/ 目录已锁定"
+
+    # 尝试锁定
+    if git-crypt lock 2>&1; then
+        # 锁定后验证状态
+        local encrypted_count=0
+
+        while IFS= read -r -d '' file; do
+            if git-crypt status -e "$file" 2>/dev/null | grep -q "encrypted"; then
+                encrypted_count=$((encrypted_count + 1))
+            fi
+        done < <(find private -type f -print0 2>/dev/null || true)
+
+        log_success "private/ 目录锁定成功！"
+        log_info "已加密 $encrypted_count 个文件（共 $file_count 个文件）"
     else
-        log_warn "锁定操作可能失败或无需锁定"
+        log_error "锁定 private/ 目录失败！"
+        return 1
     fi
 }
 
@@ -228,23 +308,30 @@ file_exists() {
 backup_config() {
     local package=$1
     local target_path=$2
-    
+
     if ! file_exists "$target_path"; then
         return 0  # 文件不存在，无需备份
     fi
-    
+
     if is_symlink "$target_path"; then
         log_info "$target_path 是符号链接，跳过备份"
         return 0
     fi
-    
+
     local backup_path="${BACKUP_DIR}/${package}/${TIMESTAMP}"
-    mkdir -p "$backup_path"
-    
-    # 获取文件所在目录
-    local target_dir=$(dirname "$target_path")
     local filename=$(basename "$target_path")
-    
+
+    if [ "$DRY_RUN" = true ]; then
+        if [ -d "$target_path" ]; then
+            log_dry_run "将备份目录: $target_path -> $backup_path/"
+        else
+            log_dry_run "将备份文件: $target_path -> $backup_path/$filename"
+        fi
+        return 0
+    fi
+
+    mkdir -p "$backup_path"
+
     # 如果是目录，需要特殊处理
     if [ -d "$target_path" ]; then
         log_info "备份目录: $target_path -> $backup_path/"
@@ -253,15 +340,53 @@ backup_config() {
         log_info "备份文件: $target_path -> $backup_path/$filename"
         cp "$target_path" "$backup_path/$filename"
     fi
-    
+
     log_success "已备份到: $backup_path"
+
+    # 清理旧备份
+    cleanup_old_backups "$package"
+}
+
+# 备份轮换配置
+MAX_BACKUPS=7
+
+# 清理旧备份
+cleanup_old_backups() {
+    local package=$1
+    local package_backup_dir="${BACKUP_DIR}/${package}"
+
+    if [ ! -d "$package_backup_dir" ]; then
+        return
+    fi
+
+    # 获取所有备份目录并排序
+    local backup_dirs=($(ls -1 "$package_backup_dir" 2>/dev/null | sort -r))
+
+    if [ ${#backup_dirs[@]} -gt $MAX_BACKUPS ]; then
+        local backups_to_remove=(${backup_dirs[@]:$MAX_BACKUPS})
+
+        for backup in "${backups_to_remove[@]}"; do
+            local backup_path="${package_backup_dir}/${backup}"
+
+            if [ "$DRY_RUN" = true ]; then
+                log_dry_run "将删除旧备份: $backup_path"
+            else
+                log_info "删除旧备份: $backup_path"
+                rm -rf "$backup_path"
+            fi
+        done
+    fi
 }
 
 # 备份所有可能冲突的配置
 backup_all() {
     log_info "开始备份现有配置..."
-    
-    mkdir -p "$BACKUP_DIR"
+
+    if [ "$DRY_RUN" = true ]; then
+        log_dry_run "将创建备份目录: $BACKUP_DIR"
+    else
+        mkdir -p "$BACKUP_DIR"
+    fi
     
     # Bash 配置
     [ -f "$HOME/.bashrc" ] && backup_config "bash" "$HOME/.bashrc"
@@ -299,7 +424,21 @@ restore_config() {
     cd "$SCRIPT_DIR"
     
     # 自动解锁 private 目录（如果需要）
-    unlock_private
+    if [ "$DRY_RUN" = true ]; then
+        log_dry_run "将尝试解锁 private/ 目录"
+        unlock_private || true  # dry-run 模式下忽略失败
+    else
+        if ! unlock_private; then
+            log_warn "解锁 private/ 目录失败"
+            echo ""
+            read -p "是否继续安装配置？[y/N]: " -n 1 -r
+            echo ""
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_info "操作已取消"
+                exit 0
+            fi
+        fi
+    fi
     
     # 安装所有配置包
     local failed_packages=()
@@ -310,17 +449,28 @@ restore_config() {
         fi
         
         log_info "安装配置包: $package"
-        if stow -v "$package" 2>&1 | grep -q "WARNING"; then
-            log_warn "$package 安装时出现警告，但继续执行"
-        fi
         
-        if stow "$package"; then
-            log_success "$package 安装成功"
+        if [ "$DRY_RUN" = true ]; then
+            log_dry_run "将安装配置包: $package"
+            stow -n "$package" 2>&1 | grep -E "(LINK:|WARNING:)" || true
         else
-            log_error "$package 安装失败"
-            failed_packages+=("$package")
+            if stow -v "$package" 2>&1 | grep -q "WARNING"; then
+                log_warn "$package 安装时出现警告，但继续执行"
+            fi
+            
+            if stow "$package"; then
+                log_success "$package 安装成功"
+            else
+                log_error "$package 安装失败"
+                failed_packages+=("$package")
+            fi
         fi
     done
+    
+    if [ "$DRY_RUN" = true ]; then
+        log_info "dry-run 模式：以上操作仅显示，未实际执行"
+        return 0
+    fi
     
     if [ ${#failed_packages[@]} -eq 0 ]; then
         log_success "所有配置恢复成功！"
@@ -341,15 +491,17 @@ reset_config() {
     
     check_stow
     
-    # 确认操作
-    echo ""
-    log_warn "这将删除所有 dotfiles 的符号链接"
-    read -p "确定要继续吗？[y/N]: " -n 1 -r
-    echo ""
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log_info "操作已取消"
-        exit 0
+    # 确认操作（dry-run 模式下跳过）
+    if [ "$DRY_RUN" != true ]; then
+        echo ""
+        log_warn "这将删除所有 dotfiles 的符号链接"
+        read -p "确定要继续吗？[y/N]: " -n 1 -r
+        echo ""
+        
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "操作已取消"
+            exit 0
+        fi
     fi
     
     # 切换到 dotfiles 目录
@@ -364,13 +516,24 @@ reset_config() {
         fi
         
         log_info "卸载配置包: $package"
-        if stow -D -v "$package"; then
-            log_success "$package 卸载成功"
+        
+        if [ "$DRY_RUN" = true ]; then
+            log_dry_run "将卸载配置包: $package"
+            stow -D -n "$package" 2>&1 | grep -E "(UNLINK:|WARNING:)" || true
         else
-            log_error "$package 卸载失败"
-            failed_packages+=("$package")
+            if stow -D -v "$package"; then
+                log_success "$package 卸载成功"
+            else
+                log_error "$package 卸载失败"
+                failed_packages+=("$package")
+            fi
         fi
     done
+    
+    if [ "$DRY_RUN" = true ]; then
+        log_info "dry-run 模式：以上操作仅显示，未实际执行"
+        return 0
+    fi
     
     if [ ${#failed_packages[@]} -eq 0 ]; then
         log_success "所有配置重置成功！"
@@ -454,7 +617,7 @@ show_help() {
 Dotfiles 管理脚本
 
 用法:
-    $0 [命令]
+    $0 [--dry-run|-n] [命令]
 
 命令:
     restore      恢复/安装所有 dotfiles 配置（会自动解锁 private/）
@@ -466,13 +629,19 @@ Dotfiles 管理脚本
     crypt-status 检查 git-crypt 加密状态
     help         显示此帮助信息
 
+选项:
+    --dry-run, -n  模拟执行，显示将要执行的操作但不实际执行
+
 示例:
-    $0 restore        # 安装所有配置并解锁 private/
-    $0 reset          # 卸载所有配置
-    $0 status         # 查看配置状态
-    $0 unlock         # 解锁 private/ 目录
-    $0 lock           # 锁定 private/ 目录
-    $0 crypt-status   # 查看加密状态
+    $0 restore              # 安装所有配置并解锁 private/
+    $0 --dry-run restore    # 模拟安装，显示将要执行的操作
+    $0 restore --dry-run    # 同上（两种写法都支持）
+    $0 reset                # 卸载所有配置
+    $0 --dry-run reset      # 模拟卸载，显示将要删除的链接
+    $0 status               # 查看配置状态
+    $0 unlock                # 解锁 private/ 目录
+    $0 lock                  # 锁定 private/ 目录
+    $0 crypt-status         # 查看加密状态
 
 EOF
 }
@@ -515,5 +684,18 @@ main() {
     esac
 }
 
+# 解析命令行参数，提取 --dry-run 标志
+ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run|-n)
+            DRY_RUN=true
+            ;;
+        *)
+            ARGS+=("$arg")
+            ;;
+    esac
+done
+
 # 执行主函数
-main "$@"
+main "${ARGS[@]}"

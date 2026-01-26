@@ -102,49 +102,48 @@ command_exists() {
     command -v "$1" &> /dev/null
 }
 
-# 获取包名（处理不同发行版的包名差异）
+# 包名映射（处理不同发行版的包名差异）
+declare -A PACKAGE_MAPPINGS
+PACKAGE_MAPPINGS["debian.fd"]="fd-find"
+PACKAGE_MAPPINGS["ubuntu.fd"]="fd-find"
+PACKAGE_MAPPINGS["almalinux.fd"]="fd-find"
+PACKAGE_MAPPINGS["rhel.fd"]="fd-find"
+PACKAGE_MAPPINGS["centos.fd"]="fd-find"
+PACKAGE_MAPPINGS["fedora.fd"]="fd-find"
+
+# 获取包名
 get_package_name() {
     local pkg="$1"
-    
-    case "$OS_ID" in
-        debian|ubuntu)
-            case "$pkg" in
-                fd) echo "fd-find" ;;
-                *) echo "$pkg" ;;
-            esac
-            ;;
-        almalinux|rhel|centos|fedora)
-            case "$pkg" in
-                fd) echo "fd-find" ;;
-                *) echo "$pkg" ;;
-            esac
-            ;;
-        arch|manjaro)
-            echo "$pkg"
-            ;;
-        macos)
-            echo "$pkg"
-            ;;
-        *)
-            echo "$pkg"
-            ;;
-    esac
+    local mapping_key="${OS_ID}.${pkg}"
+
+    # 检查是否有特定的包名映射
+    if [[ -n "${PACKAGE_MAPPINGS[$mapping_key]+_}" ]]; then
+        echo "${PACKAGE_MAPPINGS[$mapping_key]}"
+    else
+        echo "$pkg"
+    fi
 }
 
 # 安装单个包
 install_package() {
     local pkg="$1"
     local cmd_name="$2"
-    
+
     # 检查命令是否已存在
     if command_exists "$cmd_name"; then
         log_warn "$cmd_name 已安装，跳过"
         return 0
     fi
-    
+
     local pkg_name=$(get_package_name "$pkg")
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "将安装: $pkg_name"
+        return 0
+    fi
+
     log_info "正在安装: $pkg_name"
-    
+
     case "$PKG_MANAGER" in
         apt|apt-get)
             if ! sudo $PKG_INSTALL "$pkg_name"; then
@@ -171,178 +170,104 @@ install_package() {
             fi
             ;;
     esac
-    
+
     log_success "$pkg_name 安装成功"
 }
 
-# Debian/Ubuntu 安装函数
-install_debian() {
-    log_info "使用 apt 安装软件包"
-    
-    # 更新包列表
-    log_info "更新包列表..."
-    sudo $PKG_UPDATE
-    
+# 通用安装函数
+install_packages() {
+    local os_type="$1"
+
+    case "$os_type" in
+        debian|ubuntu|rhel|centos|fedora|almalinux|arch|manjaro)
+            log_info "使用 $PKG_MANAGER 安装软件包"
+
+            # 更新包列表
+            log_info "更新包列表..."
+            if [ "$DRY_RUN" = "false" ]; then
+                if [[ "$os_type" == "macos" ]]; then
+                    $PKG_UPDATE
+                else
+                    sudo $PKG_UPDATE || true
+                fi
+            else
+                log_info "将更新包列表"
+            fi
+            ;;
+        macos)
+            log_info "使用 Homebrew 安装软件包"
+
+            # 检查 Homebrew 是否安装
+            if ! command_exists brew; then
+                log_error "未找到 Homebrew，请先安装: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+                exit 1
+            fi
+
+            log_info "更新包列表..."
+            $PKG_UPDATE
+            ;;
+    esac
+
     # 安装必需包
+    local total_packages=${#REQUIRED_PACKAGES[@]}
+    local installed_count=0
+    local skipped_count=0
+
+    log_info "正在安装必需软件包 ($total_packages 个)..."
+
     for pkg in "${REQUIRED_PACKAGES[@]}"; do
+        local cmd_name="$pkg"
+
         case "$pkg" in
             bash-completion)
-                install_package "$pkg" "bash_completion" || true
+                cmd_name="bash_completion"
                 ;;
             fd)
-                install_package "$pkg" "fd" || true
-                ;;
-            *)
-                install_package "$pkg" "$pkg" || true
+                cmd_name="fd"
                 ;;
         esac
-    done
-    
-    # 安装可选包
-    if [[ "$INSTALL_OPTIONAL" == "true" ]]; then
-        for pkg in "${OPTIONAL_PACKAGES[@]}"; do
-            case "$pkg" in
-                rust)
-                    # Rust 通常通过 rustup 安装
-                    if ! command_exists rustc; then
-                        log_info "Rust 建议通过 rustup 安装: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-                    fi
-                    ;;
-                *)
-                    install_package "$pkg" "$pkg" || true
-                    ;;
-            esac
-        done
-    fi
-}
 
-# AlmaLinux/RHEL/CentOS/Fedora 安装函数
-install_rhel() {
-    log_info "使用 $PKG_MANAGER 安装软件包"
-    
-    # 更新包列表
-    log_info "更新包列表..."
-    sudo $PKG_UPDATE || true
-    
-    # 安装必需包
-    for pkg in "${REQUIRED_PACKAGES[@]}"; do
-        case "$pkg" in
-            bash-completion)
-                install_package "$pkg" "bash_completion" || true
-                ;;
-            fd)
-                install_package "$pkg" "fd" || true
-                ;;
-            *)
-                install_package "$pkg" "$pkg" || true
-                ;;
-        esac
+        if install_package "$pkg" "$cmd_name"; then
+            installed_count=$((installed_count + 1))
+        else
+            skipped_count=$((skipped_count + 1))
+        fi
     done
-    
-    # 安装可选包
-    if [[ "$INSTALL_OPTIONAL" == "true" ]]; then
-        for pkg in "${OPTIONAL_PACKAGES[@]}"; do
-            case "$pkg" in
-                rust)
-                    if ! command_exists rustc; then
-                        log_info "Rust 建议通过 rustup 安装: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-                    fi
-                    ;;
-                *)
-                    install_package "$pkg" "$pkg" || true
-                    ;;
-            esac
-        done
-    fi
-}
 
-# Arch Linux 安装函数
-install_arch() {
-    log_info "使用 pacman 安装软件包"
-    
-    # 更新包列表
-    log_info "更新包列表..."
-    sudo $PKG_UPDATE
-    
-    # 安装必需包
-    for pkg in "${REQUIRED_PACKAGES[@]}"; do
-        case "$pkg" in
-            bash-completion)
-                install_package "$pkg" "bash_completion" || true
-                ;;
-            *)
-                install_package "$pkg" "$pkg" || true
-                ;;
-        esac
-    done
-    
     # 安装可选包
     if [[ "$INSTALL_OPTIONAL" == "true" ]]; then
-        for pkg in "${OPTIONAL_PACKAGES[@]}"; do
-            case "$pkg" in
-                rust)
-                    if ! command_exists rustc; then
-                        log_info "Rust 建议通过 rustup 安装: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-                    fi
-                    ;;
-                *)
-                    install_package "$pkg" "$pkg" || true
-                    ;;
-            esac
-        done
-    fi
-}
+        local optional_total=${#OPTIONAL_PACKAGES[@]}
+        local optional_installed=0
+        local optional_skipped=0
 
-# macOS 安装函数
-install_macos() {
-    log_info "使用 Homebrew 安装软件包"
-    
-    # 检查 Homebrew 是否安装
-    if ! command_exists brew; then
-        log_error "未找到 Homebrew，请先安装: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-        exit 1
-    fi
-    
-    # 更新包列表
-    log_info "更新包列表..."
-    $PKG_UPDATE
-    
-    # 安装必需包
-    for pkg in "${REQUIRED_PACKAGES[@]}"; do
-        case "$pkg" in
-            bash-completion)
-                install_package "$pkg" "bash_completion" || true
-                ;;
-            fd)
-                install_package "$pkg" "fd" || true
-                ;;
-            *)
-                install_package "$pkg" "$pkg" || true
-                ;;
-        esac
-    done
-    
-    # 安装可选包
-    if [[ "$INSTALL_OPTIONAL" == "true" ]]; then
+        log_info "正在安装可选软件包 ($optional_total 个)..."
+
         for pkg in "${OPTIONAL_PACKAGES[@]}"; do
-            case "$pkg" in
-                rust)
-                    if ! command_exists rustc; then
-                        log_info "Rust 建议通过 rustup 安装: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-                    fi
-                    ;;
-                *)
-                    install_package "$pkg" "$pkg" || true
-                    ;;
-            esac
+            if [[ "$pkg" == "rust" ]]; then
+                if ! command_exists rustc; then
+                    log_info "Rust 建议通过 rustup 安装: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+                fi
+                optional_skipped=$((optional_skipped + 1))
+            else
+                if install_package "$pkg" "$pkg"; then
+                    optional_installed=$((optional_installed + 1))
+                else
+                    optional_skipped=$((optional_skipped + 1))
+                fi
+            fi
         done
+
+        log_info "可选包安装完成: 已安装 $optional_installed 个，已跳过 $optional_skipped 个"
     fi
+
+    log_info "必需包安装完成: 已安装 $installed_count 个，已跳过 $skipped_count 个"
 }
 
 # 主函数
 main() {
     INSTALL_OPTIONAL="false"
-    
+    DRY_RUN="false"
+
     # 解析命令行参数
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -350,11 +275,16 @@ main() {
                 INSTALL_OPTIONAL="true"
                 shift
                 ;;
+            --dry-run|-n)
+                DRY_RUN="true"
+                shift
+                ;;
             -h|--help)
                 echo "用法: $0 [选项]"
                 echo ""
                 echo "选项:"
                 echo "  --optional    安装可选软件包（git-crypt, gnupg, go, rust）"
+                echo "  --dry-run, -n 模拟执行，显示将要执行的操作但不实际安装"
                 echo "  -h, --help    显示此帮助信息"
                 exit 0
                 ;;
@@ -376,17 +306,8 @@ main() {
     
     # 根据操作系统调用相应的安装函数
     case "$OS_ID" in
-        debian|ubuntu)
-            install_debian
-            ;;
-        almalinux|rhel|centos|fedora)
-            install_rhel
-            ;;
-        arch|manjaro)
-            install_arch
-            ;;
-        macos)
-            install_macos
+        debian|ubuntu|almalinux|rhel|centos|fedora|arch|manjaro|macos)
+            install_packages "$OS_ID"
             ;;
         *)
             log_error "不支持的操作系统: $OS_ID"

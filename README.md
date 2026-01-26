@@ -32,8 +32,11 @@ cd ~/.dotfiles
 # 使用脚本自动安装（会自动备份现有配置）
 ./manage.sh restore
 
+# 可以先预览将要执行的操作（dry-run 模式）
+./manage.sh --dry-run restore
+
 # 或者手动使用 Stow
-stow bash nvim tmux git-workfow bat
+stow bash nvim tmux git-workflow bat
 ```
 
 3. **验证安装**
@@ -55,7 +58,7 @@ ls -la ~/.tmux.conf
 ./manage.sh reset
 
 # 或手动使用 Stow
-stow -D bash nvim tmux git-workfow bat
+stow -D bash nvim tmux git-workflow bat
 ```
 
 ## 📁 项目结构
@@ -179,6 +182,25 @@ stow -R bash nvim tmux git-workfow bat  # -R 表示重新安装
 # 显示帮助信息
 ./manage.sh help
 ```
+
+### Dry-Run 模式
+
+所有命令都支持 `--dry-run`（或 `-n`）参数，可以在不实际执行操作的情况下预览将要执行的操作：
+
+```bash
+# 模拟安装，显示将要创建的符号链接
+./manage.sh --dry-run restore
+# 或
+./manage.sh restore --dry-run
+
+# 模拟卸载，显示将要删除的符号链接
+./manage.sh --dry-run reset
+
+# 模拟备份，显示将要备份的文件
+./manage.sh --dry-run backup
+```
+
+这在不确定操作结果时非常有用，可以先预览再决定是否执行。
 
 ### Stow 常用命令（手动管理）
 
