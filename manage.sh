@@ -477,11 +477,12 @@ restore_config() {
     
     if [ ${#failed_packages[@]} -eq 0 ]; then
         log_success "所有配置恢复成功！"
-        
+        source ~/.bashrc
+        tmux source-file ~/.tmux.conf
         echo ""
         echo "提示："
-        echo "  - 重新加载 shell: source ~/.bashrc"
-        echo "  - 重新加载 tmux: tmux source-file ~/.tmux.conf"
+        echo "  - 已重新加载 shell: source ~/.bashrc"
+        echo "  - 已重新加载 tmux: tmux source-file ~/.tmux.conf"
     else
         log_error "以下配置包安装失败: ${failed_packages[*]}"
         exit 1
