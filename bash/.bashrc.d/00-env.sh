@@ -9,6 +9,9 @@ shopt -s histappend
 shopt -s autocd cdspell checkwinsize extglob globstar
 #set -o vi
 
+#自动补全时忽略大小写
+bind "set completion-ignore-case on"
+
 # Tmux 环境检测和 TERM 处理
 if [ -n "$TMUX" ]; then
     # 在 tmux 中，确保 TERM 设置为 tmux-256color 或 screen-256color
