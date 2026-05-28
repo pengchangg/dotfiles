@@ -30,5 +30,6 @@ ripgrep
 stow
 tmux
 tree
+tree-sitter-cli
 unzip
 wget
