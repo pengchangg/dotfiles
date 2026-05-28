@@ -1,0 +1,96 @@
+# ~/.config/lf/lfrc — minimal SSH-friendly config
+# Philosophy: fast, simple, no multimedia. Works over ssh without NERD Fonts.
+
+# ── Shell ─────────────────────────────────────────────────────
+set shell bash
+
+# ── Display ───────────────────────────────────────────────────
+set drawbox                   # 框线分隔面板
+set number                    # 行号快速定位
+set scrolloff 5               # 滚动到底部前保留 5 行
+set ratios 1:2:3              # 三栏：目录 | 文件 | 预览
+set info ""                   # 底部不显示文件信息
+set icons false               # 不用 NERD Fonts 图标（SSH 兼容）
+set dirpreviews false         # 不预览目录内容
+
+# ── Preview ───────────────────────────────────────────────────
+set preview true              # 开启预览窗格
+set previewer ~/.config/lf/pv.sh  # md→glow, text→bat, binary→跳过
+
+# ── Search ─────────────────────────────────────────────────────
+set ignorecase true           # 搜索忽略大小写
+set smartcase true            # 有大写字母时自动区分大小写
+set incsearch true            # 增量搜索
+set wrapscan true             # 搜索结果循环
+
+# ── Sorting ────────────────────────────────────────────────────
+set sortby natural            # 自然排序（file1 < file2 < file10）
+set dircounts false           # 不计算目录内文件数（快）
+set dironly false             # 不过滤只显示目录
+
+# ── Hidden files ───────────────────────────────────────────────
+set hiddenfiles ".*"          # 隐藏 . 开头文件
+set nohidden                  # 默认不显示隐藏文件
+
+# ── Timestamps ─────────────────────────────────────────────────
+set timefmt "01/02 15:04"    # 紧凑时间格式：月/日 时:分
+
+# ════════════════════════════════════════════════════════════════
+# 快捷键
+# ════════════════════════════════════════════════════════════════
+
+# ── Navigation extras ─────────────────────────────────────────
+map <bs> cd ~                 # backspace → 回家目录
+map ~ cd ~
+map . cd ..                   # 单键退到上级（和 bash alias .. 一致）
+
+# ── Toggle hidden files ───────────────────────────────────────
+map zh set hidden!            # zh → toggle 隐藏文件
+
+# ── Open with ─────────────────────────────────────────────────
+map <enter> shell             # enter → 打开文件（系统默认）
+map O $nvim $f                # O → nvim 打开
+map e $nvim $f                # e → 同上
+
+# ── File operations ───────────────────────────────────────────
+map <c-n> push :mkdir<space>  # Ctrl+N → 提示创建目录
+map <c-f> push :touch<space>  # Ctrl+F → 提示创建文件
+map R push :rename<space>     # R → 重命名
+
+# ── Search with fd ────────────────────────────────────────────
+map <c-s> push :glob-select<space>  # Ctrl+S → 通配符选择
+map <c-g> $fd -H . | fzf --multi | xargs -r -d'\n' lf -remote "send $id select"  # Ctrl+G → fd+fzf 搜索选中
+
+# ── Clipboard extras ──────────────────────────────────────────
+map Y copy                    # Y → 复制（和 vim 一致）
+map D cut                     # D → 剪切
+map P paste                   # P → 粘贴
+
+# ── Quick quit ────────────────────────────────────────────────
+map Q quit
+map ZZ quit
+
+# ════════════════════════════════════════════════════════════════
+# 命令链
+# ════════════════════════════════════════════════════════════════
+
+# select-all: 全选当前目录文件
+cmd select-all :unselect; invert
+
+# trash: 移到回收站（如果有 trash-cli）
+cmd trash %{{
+    if command -v trash-put >/dev/null 2>&1; then
+        trash-put -- "$@"
+    else
+        rm -ri -- "$@"
+    fi
+}}
+
+# mkdir-and-enter: 创建目录后进入
+cmd mkcd %{{
+    mkdir -p -- "$1" && echo "created: $1"
+}}
+
+# ════════════════════════════════════════════════════════════════
+# 颜色方案 — 16 色 ANSI，SSH 友好
+# ════════════════════════════════════════════════════════════════

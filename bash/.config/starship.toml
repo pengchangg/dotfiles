@@ -1,0 +1,13 @@
+# ~/.config/starship.toml — minimal starship prompt
+format = '$directory$git_branch$character'
+
+[directory]
+truncation_length = 3
+truncate_to_repo = false
+
+[git_branch]
+format = '[$branch]($style) '
+
+[character]
+success_symbol = '[❯](bold green)'
+error_symbol = '[❯](bold red)'

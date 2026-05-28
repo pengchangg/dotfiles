@@ -1,0 +1,68 @@
+# ~/.bashrc — bash configuration
+
+# ── Environment ──────────────────────────────────────────
+export EDITOR=vim
+export PAGER='less -R'
+export LANG=C.UTF-8
+
+# ── Prompt (starship) ────────────────────────────────────
+eval "$(starship init bash)"
+
+# ── History ──────────────────────────────────────────────
+export HISTSIZE=5000
+shopt -s histappend
+
+# ── Aliases ──────────────────────────────────────────────
+alias ls='ls --color=auto'
+alias ll='ls -alFh'
+alias la='ls -A'
+alias l='ls -CF'
+alias grep='rg --color=auto'
+alias find='fd'
+alias cat='bat -p'
+alias reload='source ~/.config/bash/bashrc && echo "bash config reloaded"'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias g='git'
+alias gs='git status'
+alias gl='git log --oneline -20'
+alias gd='git diff'
+alias df='df -h'
+alias du='du -h'
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
+
+# ── Shell options ────────────────────────────────────────
+set -o noclobber
+bind 'set completion-ignore-case on'
+
+# ── Functions ────────────────────────────────────────────
+mcd() { mkdir -p "$1" && cd "$1"; }
+
+# ── Completion ───────────────────────────────────────────
+if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+    . /usr/share/bash-completion/bash_completion
+fi
+
+# ── fzf ───────────────────────────────────────────────────
+[[ -f ~/.config/bash/fzf.sh ]] && . ~/.config/bash/fzf.sh
+
+# Ctrl+O — fzf pick file and open in nvim
+fzf-nvim-widget() {
+    local file
+    file=$(FZF_DEFAULT_COMMAND='fd --type f' \
+        FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --preview 'bat --color=always --style=numbers,header {} 2>/dev/null || cat {}'" \
+        FZF_DEFAULT_OPTS_FILE='' fzf) && nvim "$file"
+}
+bind -m emacs-standard -x '"\C-o": fzf-nvim-widget'
+bind -m vi-insert -x '"\C-o": fzf-nvim-widget'
+
+# ── lf file manager ────────────────────────────────────────
+# lfcd — use lf to browse, auto-cd on exit
+lfcd() {
+    local dir
+    dir=$(command lf -print-last-dir "$@" 2>/dev/null) && cd "$dir"
+}
+# alias: plain lf stays inside current dir, lfcd changes dir
+alias l='lfcd'

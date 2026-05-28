@@ -1,0 +1,7 @@
+# ~/.bash_profile — login shell setup
+
+# source system profile if exists
+[[ -f ~/.profile ]] && . ~/.profile
+
+# source bashrc for interactive shells
+[[ -f ~/.bashrc ]] && . ~/.bashrc
