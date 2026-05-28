@@ -10,7 +10,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 DOTFILES="${DOTFILES_DIR:-$HOME/.dotfiles}"
-PACKAGES=(git gnupg bash lf tmux ssh)
+PACKAGES=(git gnupg bash lf tmux nvim ssh)
 
 step()  { echo -e "${GREEN}==>${NC} $*"; }
 warn()  { echo -e "${YELLOW}⚠${NC}  $*"; }
