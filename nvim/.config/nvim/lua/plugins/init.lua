@@ -1,11 +1,16 @@
 -- Plugin specifications (lazy.nvim)
 
 return {
-  -- Treesitter: better syntax highlighting
+  -- Treesitter: better syntax highlighting (deferred loading)
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
-    main = "nvim-treesitter.configs",
+    event = { "BufReadPost", "BufNewFile" },
+    config = function(_, opts)
+      pcall(function()
+        require("nvim-treesitter.configs").setup(opts)
+      end)
+    end,
     opts = {
       ensure_installed = { "lua", "python", "bash", "markdown", "json", "yaml", "toml", "gitignore" },
       auto_install = true,
