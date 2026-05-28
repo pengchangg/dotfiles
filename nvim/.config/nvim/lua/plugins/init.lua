@@ -5,14 +5,13 @@ return {
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
-    config = function()
-      require("nvim-treesitter.configs").setup({
-        ensure_installed = { "lua", "python", "bash", "markdown", "json", "yaml", "toml", "gitignore" },
-        auto_install = true,
-        highlight = { enable = true },
-        indent = { enable = true },
-      })
-    end,
+    main = "nvim-treesitter.configs",
+    opts = {
+      ensure_installed = { "lua", "python", "bash", "markdown", "json", "yaml", "toml", "gitignore" },
+      auto_install = true,
+      highlight = { enable = true },
+      indent = { enable = true },
+    },
   },
 
   -- Telescope: fuzzy finder (files, grep, buffers)
