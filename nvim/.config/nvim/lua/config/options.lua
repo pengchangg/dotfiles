@@ -1,34 +1,92 @@
--- Editor options
+-- Core Neovim options and UI-related autocmds.
 
-vim.opt.number = true             -- line numbers
-vim.opt.relativenumber = true     -- relative line numbers
-vim.opt.cursorline = true         -- highlight current line
-vim.opt.signcolumn = "yes"        -- always show sign column
+-- ╭──────────────────────────────────────────────────────────────────────╮
+-- │                              OPTIONS                                 │
+-- ╰──────────────────────────────────────────────────────────────────────╯
 
-vim.opt.tabstop = 2               -- tab = 2 spaces
+-- Leader keys
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
+-- Local settings
+vim.opt.exrc = true
+vim.opt.secure = true
+
+-- Line numbers
+vim.opt.number = true
+vim.opt.relativenumber = true
+
+-- Persistence
+vim.opt.confirm = true
+vim.opt.undofile = true
+vim.opt.undolevels = 1000000
+
+-- Mouse & clipboard
+vim.opt.mouse = "a"
+
+-- Indentation
+vim.opt.expandtab = true
 vim.opt.shiftwidth = 2
-vim.opt.expandtab = true          -- spaces, not tabs
+vim.opt.tabstop = 2
+vim.opt.shiftround = true
 vim.opt.autoindent = true
+vim.opt.smartindent = true
 
-vim.opt.clipboard = "unnamedplus" -- system clipboard
-vim.opt.mouse = ""                -- no mouse (terminal-friendly)
-vim.opt.termguicolors = true      -- 24-bit color
+-- Formatting
+vim.opt.formatoptions = "jcroqlnt"
 
-vim.opt.ignorecase = true         -- case-insensitive search
-vim.opt.smartcase = true          -- …unless uppercase in pattern
-vim.opt.hlsearch = true           -- highlight matches
-vim.opt.incsearch = true          -- incremental search
+-- Search
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
+vim.opt.inccommand = "nosplit"
+vim.opt.grepprg = "rg --vimgrep"
+vim.opt.grepformat = "%f:%l:%c:%m"
 
-vim.opt.splitright = true         -- vertical split to the right
-vim.opt.splitbelow = true         -- horizontal split below
+-- UI
+vim.opt.cursorline = true
+vim.opt.signcolumn = "yes"
+vim.opt.ruler = true
+vim.opt.laststatus = 3
+vim.opt.termguicolors = true
+vim.opt.textwidth = 80
+vim.opt.colorcolumn = "80"
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "rust", "zig" },
+	callback = function()
+		-- Wider ruler for languages with longer line conventions
+		vim.opt_local.colorcolumn = "100"
+		vim.opt_local.textwidth = 100
+	end,
+})
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "python" },
+	callback = function()
+		-- Wider ruler for languages with longer line conventions
+		vim.opt_local.colorcolumn = "88"
+		vim.opt_local.textwidth = 88
+	end,
+})
+vim.opt.showmode = false
 
-vim.opt.scrolloff = 5             -- keep 5 lines above/below cursor
+-- Scrolling & windows
+vim.opt.winminwidth = 5
+vim.opt.scrolloff = 4
 vim.opt.sidescrolloff = 8
+vim.opt.splitbelow = true
+vim.opt.splitright = true
+vim.opt.splitkeep = "screen"
 
-vim.opt.swapfile = false          -- no swap files
-vim.opt.backup = false
-vim.opt.undofile = true           -- persistent undo
-vim.opt.undodir = vim.fn.stdpath("data") .. "/undo"
+-- Wrapping & display
+vim.opt.wrap = false
+vim.opt.linebreak = true
+vim.opt.list = false
 
-vim.opt.updatetime = 300          -- faster completion
-vim.opt.timeoutlen = 400          -- faster key sequence
+-- Folding
+vim.opt.foldmethod = "indent"
+vim.opt.foldlevel = 99
+vim.opt.foldtext = "v:lua.vim.fn.getline(v:foldstart) .. ' ...'"
+
+-- Misc
+vim.opt.jumpoptions = "view"
+vim.opt.virtualedit = "block"
+vim.opt.wildmode = "longest:full,full"
