@@ -1,0 +1,12 @@
+[init]
+	defaultBranch = main
+[user]
+	email = changpeng94@gmail.com
+	name = pengchang
+	signingkey = E6B06164FE40CC96
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
+[gpg]
+	program = gpg
