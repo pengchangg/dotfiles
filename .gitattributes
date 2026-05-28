@@ -1,0 +1,6 @@
+# git-crypt: encrypt SSH private keys and config
+# Broad match first, exceptions override (later lines win)
+ssh/.ssh/* filter=git-crypt diff=git-crypt
+ssh/.ssh/*.pub -filter -diff
+ssh/.ssh/known_hosts -filter -diff
+ssh/.ssh/known_hosts.old -filter -diff
