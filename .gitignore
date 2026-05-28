@@ -1,3 +1,4 @@
 # stow shouldn't track itself
 .gitignore
 nvim/.config/nvim/lazy-lock.json
+*nvim-pack-lock.json
