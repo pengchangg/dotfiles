@@ -65,7 +65,8 @@ case "${SHELL_CHOICE:-}" in
 esac
 
 # Stow packages (shell-dependent)
-PACKAGES=(git gnupg "$SHELL_PKG" starship lf tmux nvim ssh)
+PACKAGES=(git gnupg "$SHELL_PKG" starship lf tmux nvim)
+[[ -z "${DOTFILES_NO_SECRETS:-}" ]] && PACKAGES+=(ssh)
 
 step()  { echo -e "${GREEN}==>${NC} $*"; }
 warn()  { echo -e "${YELLOW}⚠${NC}  $*"; }
