@@ -10,6 +10,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 DOTFILES="${DOTFILES_DIR:-$HOME/.dotfiles}"
+# DOTFILES_NO_SECRETS=1  ./bootstrap.sh   # skip git-crypt + SSH permissions
 
 # Platform detection
 OS="$(uname -s)"
@@ -103,15 +104,26 @@ else
 fi
 
 # ── 4. Unlock git-crypt ────────────────────────────────────
-step "Decrypting secrets (git-crypt unlock)..."
-if git-crypt status &>/dev/null; then
+if [[ -n "${DOTFILES_NO_SECRETS:-}" ]]; then
+    warn "DOTFILES_NO_SECRETS is set — skipping secrets"
+elif git-crypt status &>/dev/null; then
+    step "Decrypting secrets (git-crypt unlock)..."
     if git-crypt status 2>&1 | grep -q 'not encrypted'; then
-        echo "  repository is not encrypted — skipping"
+        echo "  repository is not encrypted — skipping (no secrets to unlock)"
     else
         echo "  already unlocked"
     fi
 else
-    error "git-crypt unlock failed. Is the GPG key trusted?"
+    warn "git-crypt unlock failed — GPG key not available"
+    if [[ -t 0 ]]; then
+        read -rp "  Skip secrets and continue? [y/N]: " SKIP
+        if [[ ! "$SKIP" =~ ^[Yy] ]]; then
+            error "Aborted. Import GPG key first, or: DOTFILES_NO_SECRETS=1 ./bootstrap.sh"
+        fi
+        warn "Proceeding without secrets"
+    else
+        echo "  (non-interactive: skipping secrets; set DOTFILES_NO_SECRETS=1 to silence this warning)"
+    fi
 fi
 
 # ── 5. Deploy via stow ─────────────────────────────────────
@@ -130,7 +142,9 @@ for pkg in "${PACKAGES[@]}"; do
 done
 
 # ── 6. Fix SSH permissions ─────────────────────────────────
-if [[ -d "$HOME/.ssh" ]]; then
+if [[ -n "${DOTFILES_NO_SECRETS:-}" ]]; then
+    :  # secrets disabled — skip SSH permissions fix
+elif [[ -d "$HOME/.ssh" ]]; then
     step "Fixing SSH permissions..."
     chmod 700 "$HOME/.ssh"
 
