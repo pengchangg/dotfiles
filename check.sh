@@ -136,7 +136,7 @@ case "$SHELL_PKG" in
         check_link "$HOME/.config/zsh/fzf.zsh"       "$DOTFILES/zsh/.config/zsh/fzf.zsh" "zsh"
         ;;
 esac
-check_link "$HOME/.config/starship.toml" "$DOTFILES/$SHELL_PKG/.config/starship.toml" "$SHELL_PKG"
+check_link "$HOME/.config/starship.toml" "$DOTFILES/starship/.config/starship.toml" "starship"
 
 # ── lf ────────────────────────────────────────────────────────
 echo "  lf"
