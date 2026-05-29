@@ -1,0 +1,7 @@
+# ~/.config/zsh/zshenv — zsh environment (always sourced)
+export EDITOR=vim
+export PAGER='less -R'
+export LANG=en_US.UTF-8
+
+# PATH (keep existing, prepend ~/.local/bin)
+export PATH="$HOME/.local/bin:$PATH"

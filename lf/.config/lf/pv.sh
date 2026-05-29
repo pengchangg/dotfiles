@@ -9,7 +9,7 @@ file="$1"
 
 # ── Directory ─────────────────────────────────────────────────
 if [[ -d "$file" ]]; then
-    ls -lh --color=always "$file" | head -40
+    ls -lh "$file" | head -40
     exit 0
 fi
 
@@ -26,7 +26,14 @@ case "$mime" in
     text/*|application/json|application/xml|application/javascript|application/x-shellscript|inode/x-empty)
         ;;
     *)
-        echo "[binary: $mime — $({ LC_ALL=C stat -c%s "$file" 2>/dev/null | numfmt --to=iec; } 2>/dev/null || echo '?')]"
+        # POSIX file size (wc -c works on Linux and macOS)
+        size_bytes=$(wc -c < "$file" 2>/dev/null)
+        if command -v numfmt &>/dev/null; then
+            size=$(numfmt --to=iec <<< "$size_bytes" 2>/dev/null)
+        else
+            size="${size_bytes} B"
+        fi
+        echo "[binary: $mime — ${size:-?}]"
         exit 0
         ;;
 esac

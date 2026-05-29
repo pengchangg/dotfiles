@@ -1,26 +1,29 @@
-# ~/.bashrc — bash configuration
-
-# ── Environment ──────────────────────────────────────────
-export EDITOR=vim
-export PAGER='less -R'
-export LANG=C.UTF-8
+# ~/.config/zsh/zshrc — zsh interactive shell config
 
 # ── Prompt (starship) ────────────────────────────────────
-eval "$(starship init bash)"
+eval "$(starship init zsh)"
 
 # ── History ──────────────────────────────────────────────
 export HISTSIZE=5000
-shopt -s histappend
+export SAVEHIST=5000
+export HISTFILE=~/.zsh_history
+setopt APPEND_HISTORY         # 多会话共享历史
+setopt INC_APPEND_HISTORY     # 实时写入（不等退出）
+setopt SHARE_HISTORY          # 跨会话即时共享
 
 # ── Aliases ──────────────────────────────────────────────
-alias ls='ls --color=auto'
+# ls: platform-aware color flag
+case "$(uname)" in
+    Darwin) alias ls='ls -G' ;;
+    Linux)  alias ls='ls --color=auto' ;;
+esac
 alias ll='ls -alFh'
 alias la='ls -A'
 alias l='ls -CF'
 alias grep='rg --color=auto'
 alias find='fd'
 alias cat='bat -p'
-alias reload='source ~/.config/bash/bashrc && echo "bash config reloaded"'
+alias reload='source ~/.config/zsh/zshrc && echo "zsh config reloaded"'
 alias ..='cd ..'
 alias ...='cd ../..'
 alias g='git'
@@ -34,25 +37,17 @@ alias mv='mv -i'
 alias rm='rm -i'
 
 # ── Shell options ────────────────────────────────────────
-set -o noclobber
-bind 'set completion-ignore-case on'
+setopt NO_CLOBBER             # > 不覆盖已有文件（反逻辑：setopt NO_xxx = 关闭 clobber = 不覆盖）
+
+# ── Completion ───────────────────────────────────────────
+autoload -Uz compinit && compinit
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'  # 忽略大小写
 
 # ── Functions ────────────────────────────────────────────
 mcd() { mkdir -p "$1" && cd "$1"; }
 
-# ── Completion ───────────────────────────────────────────
-for completion_path in \
-    /usr/share/bash-completion/bash_completion \
-    /opt/homebrew/etc/profile.d/bash_completion.sh \
-    /usr/local/etc/profile.d/bash_completion.sh; do
-    if [[ -f "$completion_path" ]]; then
-        . "$completion_path"
-        break
-    fi
-done
-
-# ── fzf ───────────────────────────────────────────────────
-[[ -f ~/.config/bash/fzf.sh ]] && . ~/.config/bash/fzf.sh
+# ── fzf ──────────────────────────────────────────────────
+[[ -f ~/.config/zsh/fzf.zsh ]] && . ~/.config/zsh/fzf.zsh
 
 # Ctrl+O — fzf pick file and open in nvim
 fzf-nvim-widget() {
@@ -60,15 +55,14 @@ fzf-nvim-widget() {
     file=$(FZF_DEFAULT_COMMAND='fd --type f' \
         FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --preview 'bat --color=always --style=numbers,header {} 2>/dev/null || cat {}'" \
         FZF_DEFAULT_OPTS_FILE='' fzf) && nvim "$file"
+    zle reset-prompt
 }
-bind -m emacs-standard -x '"\C-o": fzf-nvim-widget'
-bind -m vi-insert -x '"\C-o": fzf-nvim-widget'
+zle -N fzf-nvim-widget
+bindkey '^O' fzf-nvim-widget
 
-# ── lf file manager ────────────────────────────────────────
-# lfcd — use lf to browse, auto-cd on exit
+# ── lf file manager ──────────────────────────────────────
 lfcd() {
     local dir
     dir=$(command lf -print-last-dir "$@" 2>/dev/null) && cd "$dir"
 }
-# alias: plain lf stays inside current dir, lfcd changes dir
-alias l='lfcd'
+alias lf='lfcd'
