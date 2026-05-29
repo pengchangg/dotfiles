@@ -47,8 +47,14 @@ check_link() {
                 "cd \$DOTFILES && stow -R $pkg     # re-stow to fix symlink target"
         fi
     elif [[ -e "$target" ]]; then
-        fail "$target exists but is not a symlink (stow not applied)" \
-            "rm -f $target && cd \$DOTFILES && stow $pkg"
+        # Check for stow tree folding: parent directory may be a symlink
+        actual=$(resolve "$target") || actual=""
+        if [[ "$actual" == "$source" ]]; then
+            pass "$target (via directory symlink)"
+        else
+            fail "$target exists but is not a symlink (stow not applied)" \
+                "rm -f $target && cd \$DOTFILES && stow $pkg"
+        fi
     else
         fail "$target missing" \
             "cd \$DOTFILES && stow $pkg"
