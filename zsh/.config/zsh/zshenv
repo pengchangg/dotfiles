@@ -1,7 +1,9 @@
 # ~/.config/zsh/zshenv — zsh environment (always sourced)
 export EDITOR=vim
 export PAGER='less -R'
-export LANG=en_US.UTF-8
+export LANG=C.UTF-8
+export LC_ALL=             # unset; let LANG control individual categories
+export LESSCHARSET=utf-8   # less: display CJK characters correctly
 
 # PATH (keep existing, prepend ~/.local/bin)
 export PATH="$HOME/.local/bin:$PATH"
