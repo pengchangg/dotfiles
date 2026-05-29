@@ -1,0 +1,25 @@
+# RHEL / AlmaLinux / Rocky Linux packages
+# Prerequisites: EPEL must be enabled first
+#   dnf install -y epel-release
+# Usage: dnf install -y $(cat packages.rhel.txt)
+#
+# NOTE: some tools are NOT in RHEL/EPEL repos — install manually:
+#   starship  → curl -sS https://starship.rs/install.sh | sh
+#   bat       → https://github.com/sharkdp/bat/releases
+#   glow      → https://github.com/charmbracelet/glow/releases
+#   lf        → https://github.com/gokcehan/lf/releases
+
+bash-completion
+fd-find
+fzf
+git
+git-crypt
+gnupg2
+neovim
+ripgrep
+stow
+tmux
+tree
+unzip
+wget
+zsh

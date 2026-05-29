@@ -1,0 +1,22 @@
+# Debian / Ubuntu packages
+# Usage: xargs -a packages.debian.txt apt-get install -y
+#   or:  apt-get install -y $(cat packages.debian.txt)
+
+bash-completion
+bat
+fd-find
+fzf
+git
+git-crypt
+glow
+gnupg
+lf
+neovim
+ripgrep
+stow
+tmux
+tree
+tree-sitter-cli
+unzip
+wget
+zsh

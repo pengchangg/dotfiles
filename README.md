@@ -1,6 +1,6 @@
 # Dotfiles
 
-Arch Linux 终端环境配置，GNU stow + git 管理，GPG 签名所有 commit。私密文件通过 git-crypt 加密。
+跨平台终端环境配置（Arch / Debian / RHEL / macOS），GNU stow + git 管理，GPG 签名所有 commit。私密文件通过 git-crypt 加密。
 
 ## 模块
 
@@ -18,7 +18,14 @@ Arch Linux 终端环境配置，GNU stow + git 管理，GPG 签名所有 commit�
 
 ```bash
 # 1. 安装系统依赖
-pacman -S --needed - < ~/.dotfiles/packages.txt
+# Arch
+pacman -S --needed - < ~/.dotfiles/packages.arch.txt
+# Debian / Ubuntu
+xargs -a ~/.dotfiles/packages.debian.txt apt-get install -y
+# RHEL / AlmaLinux (需要先启用 EPEL: dnf install -y epel-release)
+dnf install -y $(cat ~/.dotfiles/packages.rhel.txt)
+# macOS
+brew bundle --file=~/.dotfiles/Brewfile
 
 # 2. 导入 GPG 私钥（签名 + 解密 git-crypt）
 gpg --import gpg-backup.asc
@@ -52,7 +59,7 @@ git add -A && git commit -S -m "add <name> config"
 使用 git-crypt + GPG 加密：
 
 ```bash
-pacman -S git-crypt
+# install git-crypt (see dependency table above for your distro)
 cd ~/.dotfiles && git-crypt init
 git-crypt add-gpg-user <KEY-ID>
 echo "module/**/secret filter=git-crypt diff=git-crypt" >> .gitattributes
@@ -62,23 +69,25 @@ echo "module/**/secret filter=git-crypt diff=git-crypt" >> .gitattributes
 
 ## 依赖
 
-完整系统包清单见 `packages.txt`（`pacman -S --needed - < packages.txt` 一键安装）。
+完整系统包清单见 `packages.<distro>.txt` 和 `Brewfile`。
 
-| 工具 | 用途 | 安装 |
-|------|------|------|
-| stow | 符号链接管理 | `pacman -S stow` |
-| git-crypt | 加密私密文件 | `pacman -S git-crypt` |
-| gnupg | GPG 签名 + git-crypt 解密 | `pacman -S gnupg` |
-| neovim (>=0.12) | 编辑器 | `pacman -S neovim` |
-| tree-sitter-cli | nvim treesitter parser 编译 | `pacman -S tree-sitter-cli` |
-| starship | prompt | `curl -sS https://starship.rs/install.sh \| sh` |
-| fzf | 模糊搜索 | `pacman -S fzf` |
-| ripgrep | 替代 grep | `pacman -S ripgrep` |
-| fd | 替代 find | `pacman -S fd` |
-| bat | 语法高亮预览 | `pacman -S bat` |
-| glow | Markdown 渲染 | `pacman -S glow` |
-| lf | 文件管理器 | `pacman -S lf` |
-| tmux | 终端多路复用 | `pacman -S tmux` |
+| 工具 | 用途 | Arch | Debian | RHEL | macOS |
+|------|------|------|--------|------|-------|
+| stow | 符号链接管理 | pacman | apt | dnf (EPEL) | brew |
+| git-crypt | 加密私密文件 | pacman | apt | dnf (EPEL) | brew |
+| gnupg | GPG 签名 + 解密 | pacman | apt | dnf (gnupg2) | brew |
+| neovim (>=0.12) | 编辑器 | pacman | apt | dnf (EPEL) | brew |
+| tree-sitter-cli | TS parser 编译 | pacman | apt | — | brew |
+| starship | prompt | curl | curl | curl | brew |
+| fzf | 模糊搜索 | pacman | apt | dnf (EPEL) | brew |
+| ripgrep | 替代 grep | pacman | apt | dnf (EPEL) | brew |
+| fd | 替代 find | pacman | apt (fd-find) | dnf (fd-find) | brew |
+| bat | 语法高亮预览 | pacman | apt | 手动 | brew |
+| glow | Markdown 渲染 | pacman | apt | 手动 | brew |
+| lf | 文件管理器 | pacman | apt | 手动 | brew |
+| tmux | 终端多路复用 | pacman | apt | dnf | brew |
+
+**RHEL 注意**: `bat`、`glow`、`lf` 不在 RHEL/EPEL 仓库中，需从 GitHub Releases 手动安装。`tree-sitter-cli` 可通过 `npm install -g tree-sitter-cli` 或 `cargo install tree-sitter-cli` 安装。
 
 ## 设计原则
 

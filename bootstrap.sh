@@ -12,13 +12,30 @@ NC='\033[0m'
 DOTFILES="${DOTFILES_DIR:-$HOME/.dotfiles}"
 # DOTFILES_NO_SECRETS=1  ./bootstrap.sh   # skip git-crypt + SSH permissions
 
-# Platform detection
+# Platform / distro detection
 OS="$(uname -s)"
-case "$OS" in
-    Darwin) PLATFORM="macos" ;;
-    Linux)  PLATFORM="linux" ;;
-    *)      error "Unsupported OS: $OS" ;;
-esac
+if [[ "$OS" == "Darwin" ]]; then
+    PLATFORM="macos"
+    DISTRO="macos"
+elif [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+    PLATFORM="linux"
+    case "${ID:-}" in
+        arch)                       DISTRO="arch" ;;
+        debian|ubuntu|linuxmint)    DISTRO="debian" ;;
+        rhel|centos|fedora|almalinux|rocky) DISTRO="rhel" ;;
+        *)
+            case "${ID_LIKE:-}" in
+                *debian*)       DISTRO="debian" ;;
+                *rhel*|*fedora*) DISTRO="rhel" ;;
+                *)              DISTRO="${ID:-unknown}" ;;
+            esac
+            ;;
+    esac
+else
+    PLATFORM="linux"
+    DISTRO="unknown"
+fi
 
 # ── 1.5 Shell selection ─────────────────────────────────────
 if [[ "$PLATFORM" == "macos" ]]; then
@@ -77,13 +94,32 @@ for cmd in stow git-crypt gpg; do
 done
 if [[ ${#MISSING[@]} -gt 0 ]]; then
     error "Missing: ${MISSING[*]}"
-    if [[ "$PLATFORM" == "macos" ]]; then
-        echo "  brew install ${MISSING[*]}"
-        echo "  (or: brew bundle --file=$DOTFILES/Brewfile to install everything)"
-    else
-        echo "  pacman -S ${MISSING[*]}"
-        echo "  (or: pacman -S --needed - < $DOTFILES/packages.txt to install everything)"
-    fi
+    case "$PLATFORM" in
+        macos)
+            echo "  brew install ${MISSING[*]}"
+            echo "  (or: brew bundle --file=$DOTFILES/Brewfile)"
+            ;;
+        linux)
+            case "$DISTRO" in
+                arch)
+                    echo "  pacman -S ${MISSING[*]}"
+                    echo "  (or: pacman -S --needed - < $DOTFILES/packages.arch.txt)"
+                    ;;
+                debian)
+                    echo "  apt-get install -y ${MISSING[*]}"
+                    echo "  (or: xargs -a $DOTFILES/packages.debian.txt apt-get install -y)"
+                    ;;
+                rhel)
+                    echo "  dnf install -y epel-release  # if EPEL not already enabled"
+                    echo "  dnf install -y ${MISSING[*]}"
+                    echo "  (or: dnf install -y \$(cat $DOTFILES/packages.rhel.txt))"
+                    ;;
+                *)
+                    echo "  install ${MISSING[*]} with your package manager"
+                    ;;
+            esac
+            ;;
+    esac
 fi
 echo "  all dependencies found"
 
