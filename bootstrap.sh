@@ -87,13 +87,21 @@ step "Working directory: $DOTFILES"
 # ── 2. Check dependencies ───────────────────────────────────
 step "Checking dependencies..."
 MISSING=()
-for cmd in stow git-crypt gpg; do
+for cmd in stow; do
     if ! command -v "$cmd" &>/dev/null; then
         MISSING+=("$cmd")
     fi
 done
+# git-crypt + gpg only required when secrets are enabled
+if [[ -z "${DOTFILES_NO_SECRETS:-}" ]]; then
+    for cmd in git-crypt gpg; do
+        if ! command -v "$cmd" &>/dev/null; then
+            MISSING+=("$cmd")
+        fi
+    done
+fi
 if [[ ${#MISSING[@]} -gt 0 ]]; then
-    error "Missing: ${MISSING[*]}"
+    echo -e "  ${RED}✗${NC}  Missing: ${MISSING[*]}"
     case "$PLATFORM" in
         macos)
             echo "  brew install ${MISSING[*]}"
@@ -120,15 +128,19 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
             esac
             ;;
     esac
+    exit 1
 fi
 echo "  all dependencies found"
 
 # ── 3. Import GPG key ──────────────────────────────────────
-step "GPG key setup"
-if gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -q '^sec'; then
-    echo "  GPG key already present:"
+if [[ -n "${DOTFILES_NO_SECRETS:-}" ]]; then
+    echo ""
+    :  # skip — secrets disabled
+elif gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep -q '^sec'; then
+    step "GPG key setup"
     gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep '^uid' | sed 's/^/  /'
 else
+    step "GPG key setup"
     warn "No GPG secret key found."
     read -rp "  Path to GPG backup file (e.g. ~/gpg-backup.asc): " KEYFILE
     [[ -f "$KEYFILE" ]] || error "File not found: $KEYFILE"
