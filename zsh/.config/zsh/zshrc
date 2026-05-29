@@ -1,5 +1,8 @@
 # ~/.config/zsh/zshrc — zsh interactive shell config
 
+# ── Keymap (emacs mode: Ctrl+A/P/E/N etc.) ────────────────
+bindkey -e
+
 # ── Prompt (starship) ────────────────────────────────────
 eval "$(starship init zsh)"
 

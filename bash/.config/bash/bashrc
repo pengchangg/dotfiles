@@ -1,5 +1,8 @@
 # ~/.bashrc — bash configuration
 
+# ── Keymap (emacs mode: Ctrl+A/P/E/N etc.) ────────────────
+set -o emacs
+
 # ── Environment ──────────────────────────────────────────
 export EDITOR=vim
 export PAGER='less -R'
